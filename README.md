@@ -1,3 +1,5 @@
+_A fork from fmpr/CrowdLayer with modifications by alexdiment for Python 3 support. Confirmed reproducibility on the LabelMe task (data needs convertion though, suggested procedure is to load npy files in Python 2, save them into .h5 with deepdish, use them in Python 3)._
+
 # CrowdLayer
 A neural network layer that enables training of deep neural networks directly from crowdsourced labels (e.g. from Amazon Mechanical Turk) or, more generally, labels from multiple annotators with different biases and levels of expertise, as proposed in the paper:
 
