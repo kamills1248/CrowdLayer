@@ -6,5 +6,5 @@ setup(
     version='0.1dev',
     packages=['crowd_layer'],
     license='GNU General Public License v3.0',
-    long_description=open('README.txt').read(),
+    long_description=open('README.md').read(),
 )
