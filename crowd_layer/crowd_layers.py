@@ -154,7 +154,7 @@ class MaskedMultiBinaryCrossEntropy(object):
 		vec = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_pred, labels=y_true)
 		mask = tf.equal(y_true[:,0,:], -1)
 		zer = tf.zeros_like(vec)
-		loss = tf.mean(tf.where(mask, x=zer, y=vec))
+		loss = tf.reduce_mean((tf.where(mask, x=zer, y=vec), axis=1, keepdims=False)
 		return loss
 
 
