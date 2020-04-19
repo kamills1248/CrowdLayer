@@ -4,7 +4,7 @@ Confirmed reproducibility on the LabelMe task (data needs convertion though, sug
 To install, use command:
 
 ```bash
-pip install git+https://github.com/alexdiment/CrowdLayer
+pip install git+https://github.com/kamills1248/CrowdLayer
 ```
 
 # CrowdLayer
