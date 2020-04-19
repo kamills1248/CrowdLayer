@@ -1,4 +1,3 @@
-
 import numpy as np
 import tensorflow as tf
 import keras
@@ -72,9 +71,9 @@ class CrowdsClassification(Layer):
 					out.append(x * self.kernel[r,0])
 			res = tf.stack(out)
 			if len(res.shape) == 3:
-				res = tf.transpose(res, [1, 2, 0])
+				res = tf.transpose(a=res, perm=[1, 2, 0])
 			elif len(res.shape) == 4:
-				res = tf.transpose(res, [1, 2, 3, 0])
+				res = tf.transpose(a=res, perm=[1, 2, 3, 0])
 			else:
 				raise Exception("Wrong number of dimensions for output")
 		else:
@@ -141,20 +140,20 @@ class CrowdsRegression(Layer):
 class MaskedMultiCrossEntropy(object):
 
 	def loss(self, y_true, y_pred):
-		vec = tf.nn.softmax_cross_entropy_with_logits_v2(logits=y_pred, labels=y_true, dim=1)
+		vec = tf.nn.softmax_cross_entropy_with_logits(logits=y_pred, labels=y_true, axis=1)
 		mask = tf.equal(y_true[:,0,:], -1)
 		zer = tf.zeros_like(vec)
-		loss = tf.where(mask, x=zer, y=vec)
+		loss = tf.compat.v1.where(mask, x=zer, y=vec)
 		return loss
 
 
 class MaskedMultiBinaryCrossEntropy(object):
 
 	def loss(self, y_true, y_pred):
-		vec = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=y_pred, labels=y_true), axis=1, keepdims=False)
+		vec = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=y_pred, labels=y_true), axis=1, keepdims=False)
 		mask = tf.equal(y_true[:,0,:], -1)
 		zer = tf.zeros_like(vec)
-		loss = tf.where(mask, x=zer, y=vec)
+		loss = tf.compat.v1.where(mask, x=zer, y=vec)
 		return loss
 
 
@@ -164,7 +163,7 @@ class MaskedMultiMSE(object):
 		vec = K.square(y_pred - y_true)
 		mask = tf.equal(y_true[:,:], 999999999)
 		zer = tf.zeros_like(vec)
-		loss = tf.where(mask, x=zer, y=vec)
+		loss = tf.compat.v1.where(mask, x=zer, y=vec)
 		return loss
 
 
@@ -178,14 +177,14 @@ class MaskedMultiSequenceCrossEntropy(object):
 		mask_padding = tf.equal(y_true, 0)
 
 		# convert targets to one-hot enconding and transpose
-		y_true = tf.transpose(tf.one_hot(tf.cast(y_true, tf.int32), self.num_classes, axis=-1), [0,1,3,2])
+		y_true = tf.transpose(a=tf.one_hot(tf.cast(y_true, tf.int32), self.num_classes, axis=-1), perm=[0,1,3,2])
 
 		# masked cross-entropy
-		vec = tf.nn.softmax_cross_entropy_with_logits_v2(logits=y_pred, labels=y_true, dim=2)
+		vec = tf.nn.softmax_cross_entropy_with_logits(logits=y_pred, labels=y_true, axis=2)
 		zer = tf.zeros_like(vec)
-		vec = tf.where(mask_missings, x=zer, y=vec)
-		vec = tf.where(mask_padding, x=zer, y=vec)
-		loss = tf.reduce_mean(vec, axis=-1)
+		vec = tf.compat.v1.where(mask_missings, x=zer, y=vec)
+		vec = tf.compat.v1.where(mask_padding, x=zer, y=vec)
+		loss = tf.reduce_mean(input_tensor=vec, axis=-1)
 		return loss
 
 
@@ -227,15 +226,15 @@ class CrowdsAggregationCategoricalCrossEntropy(object):
 		# E-step
 		adjustment_factor = tf.ones_like(y_pred)
 		for r in range(self.num_annotators):
-			adj = tf.where(tf.equal(y_true[:,r], -1),
+			adj = tf.compat.v1.where(tf.equal(y_true[:,r], -1),
 								tf.ones_like(y_pred),
-								tf.gather(tf.transpose(self.pi_est[:,:,r]), y_true[:,r]))
+								tf.gather(tf.transpose(a=self.pi_est[:,:,r]), y_true[:,r]))
 			adjustment_factor = tf.multiply(adjustment_factor, adj)
 
 		res = tf.multiply(adjustment_factor, y_pred)
-		y_agg = res / tf.expand_dims(tf.reduce_sum(res, axis=1), 1)
+		y_agg = res / tf.expand_dims(tf.reduce_sum(input_tensor=res, axis=1), 1)
 
-		loss = -tf.reduce_sum(y_agg * tf.log(y_pred), reduction_indices=[1])
+		loss = -tf.reduce_sum(input_tensor=y_agg * tf.math.log(y_pred), axis=[1])
 
 		# update suff stats
 		upd_suff_stats = []
@@ -244,7 +243,7 @@ class CrowdsAggregationCategoricalCrossEntropy(object):
 			suff_stats = []
 			normalizer = tf.zeros_like(y_pred)
 			for c in range(self.num_classes):
-				suff_stats.append(tf.reduce_sum(tf.where(tf.equal(y_true[:,r], c),
+				suff_stats.append(tf.reduce_sum(input_tensor=tf.compat.v1.where(tf.equal(y_true[:,r], c),
 									y_agg,
 									tf.zeros_like(y_pred)), axis=0))
 			upd_suff_stats.append(suff_stats)
@@ -255,7 +254,7 @@ class CrowdsAggregationCategoricalCrossEntropy(object):
 
 	def m_step(self):
 		#print "M-step"
-		self.pi_est = tf.transpose(self.suff_stats / tf.expand_dims(tf.reduce_sum(self.suff_stats, axis=2), 2), [1, 2, 0])
+		self.pi_est = tf.transpose(a=self.suff_stats / tf.expand_dims(tf.reduce_sum(input_tensor=self.suff_stats, axis=2), 2), perm=[1, 2, 0])
 
 		return self.pi_est
 
@@ -303,7 +302,7 @@ class CrowdsAggregationBinaryCrossEntropy(object):
 
 		p = y_pred[:,1]
 		self.count += 1
-		self.count = tf.Print(self.count, [self.count])
+		self.count = tf.compat.v1.Print(self.count, [self.count])
 		#self.count += 1
 
 		if False:
@@ -318,28 +317,28 @@ class CrowdsAggregationBinaryCrossEntropy(object):
 			self.suff_stats_beta = [self.pi_prior for r in range(self.num_annotators)]
 			self.suff_stats_alpha_norm = [self.pi_prior for r in range(self.num_annotators)]
 			self.suff_stats_beta_norm = [self.pi_prior for r in range(self.num_annotators)]
-			self.alpha = tf.Print(self.alpha, [self.alpha])
+			self.alpha = tf.compat.v1.Print(self.alpha, [self.alpha])
 
 
 		# E-step
 		a = tf.ones_like(p)
 		b = tf.ones_like(p)
 		for r in range(self.num_annotators):
-			a = a * tf.where(tf.equal(y_true[:,r], 1), self.alpha[r]*tf.ones_like(p), tf.ones_like(p))
-			b = b * tf.where(tf.equal(y_true[:,r], 1), (1.0-self.beta[r])*tf.ones_like(p), tf.ones_like(p))
-			a = a * tf.where(tf.equal(y_true[:,r], 0), (1.0-self.alpha[r])*tf.ones_like(p), tf.ones_like(p))
-			b = b * tf.where(tf.equal(y_true[:,r], 0), self.beta[r]*tf.ones_like(p), tf.ones_like(p))
+			a = a * tf.compat.v1.where(tf.equal(y_true[:,r], 1), self.alpha[r]*tf.ones_like(p), tf.ones_like(p))
+			b = b * tf.compat.v1.where(tf.equal(y_true[:,r], 1), (1.0-self.beta[r])*tf.ones_like(p), tf.ones_like(p))
+			a = a * tf.compat.v1.where(tf.equal(y_true[:,r], 0), (1.0-self.alpha[r])*tf.ones_like(p), tf.ones_like(p))
+			b = b * tf.compat.v1.where(tf.equal(y_true[:,r], 0), self.beta[r]*tf.ones_like(p), tf.ones_like(p))
 
 		mu = (a*p) / (a*p + b*(1.0-p))
 		#mu = tf.Print(mu, [mu])
-		loss = - (mu * tf.log(y_pred[:,1]) + (1.0-mu) * tf.log(y_pred[:,0]))
+		loss = - (mu * tf.math.log(y_pred[:,1]) + (1.0-mu) * tf.math.log(y_pred[:,0]))
 
 		# update suff stats
 		for r in range(self.num_annotators):
-			self.suff_stats_alpha[r] += tf.reduce_sum(tf.where(tf.equal(y_true[:,r], 1), mu, tf.zeros_like(p)))
-			self.suff_stats_beta[r] += tf.reduce_sum(tf.where(tf.equal(y_true[:,r], 0), (1.0-mu), tf.zeros_like(p)))
-			self.suff_stats_alpha_norm[r] += tf.reduce_sum(tf.where(tf.equal(y_true[:,r], -1), tf.zeros_like(p), mu))
-			self.suff_stats_beta_norm[r] += tf.reduce_sum(tf.where(tf.equal(y_true[:,r], -1), tf.zeros_like(p), (1.0-mu)))
+			self.suff_stats_alpha[r] += tf.reduce_sum(input_tensor=tf.compat.v1.where(tf.equal(y_true[:,r], 1), mu, tf.zeros_like(p)))
+			self.suff_stats_beta[r] += tf.reduce_sum(input_tensor=tf.compat.v1.where(tf.equal(y_true[:,r], 0), (1.0-mu), tf.zeros_like(p)))
+			self.suff_stats_alpha_norm[r] += tf.reduce_sum(input_tensor=tf.compat.v1.where(tf.equal(y_true[:,r], -1), tf.zeros_like(p), mu))
+			self.suff_stats_beta_norm[r] += tf.reduce_sum(input_tensor=tf.compat.v1.where(tf.equal(y_true[:,r], -1), tf.zeros_like(p), (1.0-mu)))
 
 		return loss
 
