@@ -1,7 +1,9 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Layer
+from tensorflow.python.keras.layers import Layer
+from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.initializers import Zeros, Ones
 
 
 def init_identities(shape, dtype=None):
@@ -29,27 +31,27 @@ class CrowdsClassification(Layer):
         elif self.conn_type == "VW":
             # vector of weights (one scale per class) per annotator
             self.kernel = self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
-                                          initializer=keras.initializers.Ones(),
+                                          initializer=Ones(),
                                           trainable=True)
         elif self.conn_type == "VB":
             # two vectors of weights (one scale and one bias per class) per annotator
             self.kernel = []
             self.kernel.append(self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
-                                               initializer=keras.initializers.Zeros(),
+                                               initializer=Zeros(),
                                                trainable=True))
         elif self.conn_type == "VW+B":
             # two vectors of weights (one scale and one bias per class) per annotator
             self.kernel = []
             self.kernel.append(self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
-                                               initializer=keras.initializers.Ones(),
+                                               initializer=Ones(),
                                                trainable=True))
             self.kernel.append(self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
-                                               initializer=keras.initializers.Zeros(),
+                                               initializer=Zeros(),
                                                trainable=True))
         elif self.conn_type == "SW":
             # single weight value per annotator
             self.kernel = self.add_weight("CrowdLayer", (self.num_annotators, 1),
-                                          initializer=keras.initializers.Ones(),
+                                          initializer=Ones(),
                                           trainable=True)
         else:
             raise Exception("Unknown connection type for CrowdsClassification layer!")
@@ -98,20 +100,20 @@ class CrowdsRegression(Layer):
         if self.conn_type == "S":
             # scale-only parameter
             self.kernel.append(self.add_weight("CrowdLayer", (1, self.num_annotators),
-                                               initializer=keras.initializers.Ones(),
+                                               initializer=Ones(),
                                                trainable=True))
         elif self.conn_type == "B":
             # bias-only parameter
             self.kernel.append(self.add_weight("CrowdLayer", (1, self.num_annotators),
-                                               initializer=keras.initializers.Zeros(),
+                                               initializer=Zeros(),
                                                trainable=True))
         elif self.conn_type == "S+B" or self.conn_type == "B+S":
             # scale and bias parameters
             self.kernel.append(self.add_weight("CrowdLayer", (1, self.num_annotators),
-                                               initializer=keras.initializers.Ones(),
+                                               initializer=Ones(),
                                                trainable=True))
             self.kernel.append(self.add_weight("CrowdLayer", (1, self.num_annotators),
-                                               initializer=keras.initializers.Zeros(),
+                                               initializer=Zeros(),
                                                trainable=True))
         else:
             raise Exception("Unknown connection type for CrowdsRegression layer!")
@@ -360,7 +362,7 @@ class CrowdsAggregationBinaryCrossEntropy(object):
         return (self.alpha, self.beta)
 
 
-class CrowdsAggregationCallback(keras.callbacks.Callback):
+class CrowdsAggregationCallback(Callback):
 
     def __init__(self, loss):
         self.loss = loss
