@@ -87,6 +87,16 @@ class CrowdsClassification(Layer):
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.output_dim, self.num_annotators)
 
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'output_dim': self.output_dim,
+            'num_annotators': self.num_annotators,
+            'conn_type': self.conn_type,
+        })
+
+        return config
+
 
 class CrowdsRegression(Layer):
 
